@@ -6,14 +6,10 @@ import sys
 from gh_stars.api import fetch_repos, parse_repos
 from gh_stars.cli import parse_args
 from gh_stars.errors import GhStarsError, UserNotFoundError
+from gh_stars.logging_setup import setup_logging
 from gh_stars.render import print_table, save_csv, sort_by_stars
 
 logger = logging.getLogger("gh_stars.core")
-
-
-def hello(name: str = "git") -> str:
-    """第一版 hello 脚本，改造成函数。"""
-    return f"hello, {name}"
 
 
 def validate_username(name: str) -> str:
@@ -59,6 +55,11 @@ def run(user: str, top: int, output: str) -> None:
 def main() -> None:
     """入口：解析参数，接住异常，给出人话。"""
     args = parse_args()
+
+    # 日志配置放在解析参数之后：这样 --verbose 才能决定控制台级别，
+    # 而且 `gh-stars` 和 `python -m gh_stars` 两个入口都会走到这里。
+    setup_logging(logging.DEBUG if args.verbose else logging.INFO)
+
     logger.debug("收到参数：%r", args)
 
     try:

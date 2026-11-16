@@ -66,6 +66,8 @@ def fetch_repos(user: str, per_page: int = 100) -> list[dict]:
 
     logger.info("共拉取 %d 个仓库", len(repos))
     return repos
+
+
 def parse_repos(repos: list[dict]) -> list[dict]:
     """只保留需要的四个字段。"""
     result = []
