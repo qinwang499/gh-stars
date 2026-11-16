@@ -45,19 +45,21 @@ uv run python -m gh_stars --user octocat -v
 | `--user` / `-u` | GitHub 用户名（必填） | — |
 | `--top` / `-t` | 只显示前 N 个仓库 | 10 |
 | `--output` / `-o` | CSV 输出路径 | `stars.csv` |
-| `--verbose` / `-v` | 显示调试日志 | 关闭 |
+| `--verbose` / `-v` | 显示调试日志（控制台切到 DEBUG） | 关闭 |
 
 ## 我要它能做什么
 
 - [x] 项目骨架（config / core / cli 三层）
 - [x] 命令行入口 `python -m gh_stars`
 - [x] 命令行传入用户名：`--user octocat`
-- [x] 拉取该用户所有仓库（处理分页）
+- [x] 拉取该用户所有仓库（处理分页，已用 700+ 仓库的账号验证）
 - [x] 每个仓库保留四个字段：名字、star 数、语言、最后更新时间
 - [x] 按 star 从高到低排序
 - [x] 终端打印成表格
 - [x] 存成 `stars.csv`，Excel 能直接打开
 - [x] 出错时给人话，不甩一堆红色 traceback
+- [x] `--verbose` 真的能切到 DEBUG 日志
+- [x] 有单元测试（pytest，18 个）
 
 ## 示例输出
 
@@ -98,10 +100,31 @@ src/gh_stars/
 ├── errors.py          自定义异常
 ├── logging_setup.py   日志配置（控制台 + 文件）
 └── render.py          表格打印与 CSV 导出
+
+tests/
+├── test_api.py        parse_repos：四字段提取、缺失值兜底
+├── test_cli_core.py   参数解析、用户名校验
+└── test_render.py     star 排序、中文显示宽度、CSV 落盘
 ```
+
+## 开发
+
+```bash
+# 跑测试（18 个用例，全部是纯函数，不需要联网）
+uv run pytest
+
+# 跑测试并看每个用例名
+uv run pytest -v
+
+# 打开 DEBUG 日志，观察分页请求
+uv run python -m gh_stars --user octocat -v
+```
+
+测试只覆盖不依赖网络的部分：`parse_repos`、`sort_by_stars`、`validate_username`、`parse_args`、`save_csv`。
+`fetch_repos` 需要真实 API，靠手动跑上面的 `-v` 命令验证分页。
 
 ## 说明
 
-- 日志写入 `gh-stars.log`：控制台显示 INFO 以上，文件记录 DEBUG 以上。
+- 日志写入 `gh-stars.log`：控制台显示 INFO 以上（`-v` 时显示 DEBUG 以上），文件始终记录 DEBUG 以上。
 - CSV 使用 `utf-8-sig` 编码，Excel 打开中文不乱码。
-- `stars.csv` 和 `gh-stars.log` 均为运行产物，已加入 `.gitignore`。
+- `stars.csv`、`gh-stars.log`、`.venv/`、`__pycache__/` 均为运行产物，已加入 `.gitignore`。
