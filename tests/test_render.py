@@ -47,3 +47,24 @@ def test_save_csv_roundtrip(tmp_path):
     assert len(rows) == 1
     assert rows[0]["name"] == "r0"
     assert rows[0]["stars"] == "10"
+def test_sort_by_stars_top_zero_returns_empty():
+    repos = _make([5, 100, 30])
+
+    assert sort_by_stars(repos, 0) == []
+
+
+def test_sort_by_stars_top_negative_drops_last():
+    repos = _make([5, 100, 30])
+
+    result = sort_by_stars(repos, -1)
+
+    assert [r["stars"] for r in result] == [100, 30]
+
+
+def test_sort_by_stars_top_equals_length():
+    repos = _make([5, 100, 30])
+
+    result = sort_by_stars(repos, 3)
+
+    assert len(result) == 3
+    assert [r["stars"] for r in result] == [100, 30, 5]
