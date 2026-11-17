@@ -32,12 +32,19 @@ def fetch_repos(user: str, per_page: int = 100) -> list[dict]:
                 params={"per_page": per_page, "page": page, "sort": "updated"},
                 timeout=TIMEOUT,
             )
+        except requests.ConnectionError:
+            logger.error("网络连接失败：%s", url)
+            raise GhStarsError("连不上 GitHub，请检查网络后重试")
         except requests.Timeout:
             logger.error("请求超时：%s", url)
             raise GhStarsError("网络超时，请稍后重试")
         except requests.RequestException as e:
             logger.error("请求失败：%s", e)
-            raise GhStarsError(f"网络错误：{e}")
+            raise GhStarsError("请求 GitHub 失败，请稍后重试")
+        
+        if resp.status_code == 401:
+            logger.warning("token 无效或已过期")
+            raise GhStarsError("GitHub token 无效或已过期，请检查 .env 里的 GITHUB_TOKEN")
 
         if resp.status_code == 404:
             logger.warning("用户不存在：%s", user)
