@@ -1,8 +1,10 @@
-"""api 的测试：字段清洗 + 分页逻辑（用 monkeypatch 模拟网络）。"""
+"""api 的测试：字段清洗、分页、错误分支（用 monkeypatch 模拟网络）。"""
+
 import pytest
+import requests
 
 from gh_stars.api import fetch_repos, parse_repos
-from gh_stars.errors import RateLimitError, UserNotFoundError
+from gh_stars.errors import GhStarsError, RateLimitError, UserNotFoundError
 
 
 def test_keeps_only_four_fields():
@@ -149,3 +151,39 @@ def test_fetch_repos_returns_empty_for_empty_user(monkeypatch):
     )
 
     assert fetch_repos("empty-user") == []
+
+
+class FakeResponse401(FakeResponse):
+    def __init__(self):
+        super().__init__([])
+        self.status_code = 401
+
+
+def test_fetch_repos_raises_token_error_on_401(monkeypatch):
+    monkeypatch.setattr(
+        "gh_stars.api.requests.get",
+        lambda *args, **kwargs: FakeResponse401(),
+    )
+
+    with pytest.raises(GhStarsError, match="token 无效"):
+        fetch_repos("someone")
+
+
+def test_fetch_repos_wraps_connection_error(monkeypatch):
+    def boom(*args, **kwargs):
+        raise requests.ConnectionError("Max retries exceeded / NameResolutionError")
+
+    monkeypatch.setattr("gh_stars.api.requests.get", boom)
+
+    with pytest.raises(GhStarsError, match="连不上"):
+        fetch_repos("someone")
+
+
+def test_fetch_repos_wraps_timeout(monkeypatch):
+    def boom(*args, **kwargs):
+        raise requests.Timeout("timed out")
+
+    monkeypatch.setattr("gh_stars.api.requests.get", boom)
+
+    with pytest.raises(GhStarsError, match="超时"):
+        fetch_repos("someone")
