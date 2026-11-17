@@ -1,6 +1,6 @@
 [project]
 name = "gh-stars"
-version = "0.1.0"
+version = "0.1.1"
 description = "输入 GitHub 用户名，输出仓库 star 排行榜并存成 CSV"
 readme = "README.md"
 authors = [
