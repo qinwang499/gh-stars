@@ -59,7 +59,7 @@ uv run python -m gh_stars --user octocat -v
 - [x] 存成 `stars.csv`，Excel 能直接打开
 - [x] 出错时给人话，不甩一堆红色 traceback
 - [x] `--verbose` 真的能切到 DEBUG 日志
-- [x] 有单元测试（pytest，23 个）
+- [x] 有单元测试（pytest，28 个）
 
 ## 示例输出
 
@@ -110,7 +110,7 @@ tests/
 ## 开发
 
 ```bash
-# 跑测试（23 个用例，全部离线，不访问真实 API）
+# 跑测试（28 个用例，全部离线，不访问真实 API）
 uv run pytest
 
 # 跑测试并看每个用例名
@@ -129,10 +129,15 @@ uv run python -m gh_stars --user octocat -v
 |---|---|---|
 | `parse_repos`（四字段清洗、缺失值兜底） | `tests/test_api.py` | 纯函数，直接传假数据 |
 | `fetch_repos`（翻页、短页停止） | `tests/test_api.py` | `monkeypatch` 替换 `requests.get`，用假响应模拟两页 |
+| `fetch_repos` 的 404 / 403 / 空列表分支 | `tests/test_api.py` | 继承 `FakeResponse` 造 `FakeResponse404` / `FakeResponse403`，断言异常类型与 `retry_after` |
 | `sort_by_stars`（排序、`top` 边界） | `tests/test_render.py` | 纯函数；含 `top=0` / 负数 / 等于长度三个边界 |
 | `_width` / `_pad`（中文占两列） | `tests/test_render.py` | 纯函数 |
 | `save_csv`（写盘、`utf-8-sig`） | `tests/test_render.py` | `tmp_path` 临时目录 |
 | `parse_args` / `validate_username` | `tests/test_cli_core.py` | 纯函数 + `pytest.raises` |
+| `validate_username` 的 39 字符边界与错误文案 | `tests/test_cli_core.py` | 39 个字符应通过；`pytest.raises(..., match=...)` 检查三条错误文案 |
+
+**错误分支的覆盖率**：404（用户不存在）、403（限流 + `Retry-After` 为数字 / 非数字两种）、空仓库列表，都有对应用例。
+这类分支平时跑不到，如果不写测试，等于永远没验证过。
 
 > 分页测试的写法：`monkeypatch.setattr("gh_stars.api.requests.get", fake_get)`，
 > `fake_get` 按 `calls` 的长度返回对应的假页，并用 `calls` 记录每次的 `params`，
