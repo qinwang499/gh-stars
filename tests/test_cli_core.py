@@ -44,3 +44,8 @@ def test_validate_username_accepts_dash_and_digits():
 def test_validate_username_rejects_bad_input(bad):
     with pytest.raises(UserNotFoundError):
         validate_username(bad)
+
+
+def test_validate_username_accepts_39_chars():
+    name = "a" * 39
+    assert validate_username(name) == name

@@ -1,6 +1,8 @@
 """api 的测试：字段清洗 + 分页逻辑（用 monkeypatch 模拟网络）。"""
+import pytest
 
 from gh_stars.api import fetch_repos, parse_repos
+from gh_stars.errors import RateLimitError, UserNotFoundError
 
 
 def test_keeps_only_four_fields():
@@ -45,6 +47,8 @@ def test_handles_missing_and_null_fields():
 
 def test_empty_input_returns_empty_list():
     assert parse_repos([]) == []
+
+
 class FakeResponse:
     headers = {}
 
@@ -89,3 +93,59 @@ def test_fetch_repos_stops_after_short_page(monkeypatch):
 
     assert len(calls) == 1
     assert len(result) == 3
+
+
+class FakeResponse404(FakeResponse):
+    def __init__(self, data=None):
+        super().__init__(data or [])
+        self.status_code = 404
+
+
+class FakeResponse403(FakeResponse):
+    def __init__(self, retry_after="30"):
+        super().__init__([])
+        self.status_code = 403
+        self.headers = {"Retry-After": retry_after}
+
+
+def test_fetch_repos_raises_user_not_found(monkeypatch):
+    monkeypatch.setattr(
+        "gh_stars.api.requests.get",
+        lambda *args, **kwargs: FakeResponse404(),
+    )
+
+    with pytest.raises(UserNotFoundError):
+        fetch_repos("no-such-user")
+
+
+def test_fetch_repos_raises_rate_limit(monkeypatch):
+    monkeypatch.setattr(
+        "gh_stars.api.requests.get",
+        lambda *args, **kwargs: FakeResponse403("30"),
+    )
+
+    with pytest.raises(RateLimitError) as exc:
+        fetch_repos("someone")
+
+    assert exc.value.retry_after == 30
+
+
+def test_fetch_repos_rate_limit_fallback(monkeypatch):
+    monkeypatch.setattr(
+        "gh_stars.api.requests.get",
+        lambda *args, **kwargs: FakeResponse403("abc"),
+    )
+
+    with pytest.raises(RateLimitError) as exc:
+        fetch_repos("someone")
+
+    assert exc.value.retry_after == 60
+
+
+def test_fetch_repos_returns_empty_for_empty_user(monkeypatch):
+    monkeypatch.setattr(
+        "gh_stars.api.requests.get",
+        lambda *args, **kwargs: FakeResponse([]),
+    )
+
+    assert fetch_repos("empty-user") == []
